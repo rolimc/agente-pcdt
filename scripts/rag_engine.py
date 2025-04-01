@@ -12,7 +12,7 @@ Original file is located at
 # scripts/rag_engine.py
 
 import faiss  # <- novo
-from langchain.vectorstores import FAISS
+from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from langchain.chains.combine_documents import create_stuff_documents_chain

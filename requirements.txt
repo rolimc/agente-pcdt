@@ -1,9 +1,11 @@
 streamlit
 langchain
 langchain-openai
+langchain-community
 openai
 faiss-cpu
 spacy
 tiktoken
+
 
 
