@@ -11,6 +11,7 @@ Original file is located at
 
 # scripts/rag_engine.py
 
+import faiss  # <- novo
 from langchain.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_core.prompts import PromptTemplate
