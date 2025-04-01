@@ -1,0 +1,12 @@
+streamlit
+langchain
+langchain-openai
+langchain-chroma
+openai
+chromadb
+tiktoken
+spacy
+
+# Instala o modelo de linguagem em português usado pelo spaCy
+# Isso será baixado automaticamente ao rodar o app
+# Adicionamos um comando no próprio app para garantir
