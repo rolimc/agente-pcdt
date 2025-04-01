@@ -18,23 +18,18 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 import subprocess
 import spacy
 
-# Função que garante que o modelo spaCy está instalado
-def carregar_spacy_model():
+# Extrai palavras-chave usando spaCy com fallback
+def extrair_keywords(texto):
     try:
-        return spacy.load("pt_core_news_sm")
+        nlp = spacy.load("pt_core_news_sm")
     except OSError:
         subprocess.run(["python", "-m", "spacy", "download", "pt_core_news_sm"])
-        return spacy.load("pt_core_news_sm")
+        nlp = spacy.load("pt_core_news_sm")
 
-# Carrega o modelo de NLP
-nlp = carregar_spacy_model()
-
-# Extrai palavras-chave de uma pergunta
-def extrair_keywords(texto):
     doc = nlp(texto)
     return list(set([ent.text for ent in doc.ents if len(ent.text) > 3]))
 
-# Reescreve a pergunta com o LLM (opcional)
+# Reescreve pergunta usando OpenAI LLM
 def reescrever_pergunta(pergunta, usar_llm=True):
     if not usar_llm:
         return pergunta
@@ -50,15 +45,15 @@ Reescreva a pergunta abaixo de forma mais técnica, clara e compatível com os t
         print(f"[!] Falha ao usar LLM para reescrever pergunta: {e}")
         return pergunta
 
-# Carrega o mecanismo RAG
+# Carrega a base vetorial FAISS e cria o chain
 def load_rag_engine(faiss_path: str):
     embeddings = OpenAIEmbeddings()
 
-    # Carrega a base vetorial FAISS (persistida localmente)
+    # Carrega a base vetorial persistida
     vectorstore = FAISS.load_local(
         folder_path=faiss_path,
         embeddings=embeddings,
-        allow_dangerous_deserialization=True  # necessário no Streamlit Cloud
+        allow_dangerous_deserialization=True
     )
 
     retriever = vectorstore.as_retriever(search_kwargs={"k": 10})
@@ -67,9 +62,7 @@ def load_rag_engine(faiss_path: str):
     prompt_template = PromptTemplate(
         input_variables=["context", "pergunta"],
         template="""
-Use the following pieces of context to answer the question at the end.
-If you don't know the answer, just say that you don't know, don't try to make up an answer.
-Use three sentences maximum and keep the answer as concise as possible.
+Use os trechos abaixo do PCDT para responder a pergunta de forma clara e objetiva.
 
 {context}
 Pergunta: {pergunta}
