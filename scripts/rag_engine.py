@@ -11,21 +11,30 @@ Original file is located at
 
 # scripts/rag_engine.py
 
-import faiss  # <- novo
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from langchain.chains.combine_documents import create_stuff_documents_chain
+import subprocess
 import spacy
-import os
 
-# Carrega spaCy
-nlp = spacy.load("pt_core_news_sm")
+# Função que garante que o modelo spaCy está instalado
+def carregar_spacy_model():
+    try:
+        return spacy.load("pt_core_news_sm")
+    except OSError:
+        subprocess.run(["python", "-m", "spacy", "download", "pt_core_news_sm"])
+        return spacy.load("pt_core_news_sm")
 
+# Carrega o modelo de NLP
+nlp = carregar_spacy_model()
+
+# Extrai palavras-chave de uma pergunta
 def extrair_keywords(texto):
     doc = nlp(texto)
     return list(set([ent.text for ent in doc.ents if len(ent.text) > 3]))
 
+# Reescreve a pergunta com o LLM (opcional)
 def reescrever_pergunta(pergunta, usar_llm=True):
     if not usar_llm:
         return pergunta
@@ -41,10 +50,11 @@ Reescreva a pergunta abaixo de forma mais técnica, clara e compatível com os t
         print(f"[!] Falha ao usar LLM para reescrever pergunta: {e}")
         return pergunta
 
+# Carrega o mecanismo RAG
 def load_rag_engine(faiss_path: str):
     embeddings = OpenAIEmbeddings()
 
-    # Carrega a base FAISS salva localmente
+    # Carrega a base vetorial FAISS (persistida localmente)
     vectorstore = FAISS.load_local(
         folder_path=faiss_path,
         embeddings=embeddings,
