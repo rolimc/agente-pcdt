@@ -11,14 +11,14 @@ Original file is located at
 
 # scripts/rag_engine.py
 
-from langchain_chroma import Chroma
+from langchain.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from langchain.chains.combine_documents import create_stuff_documents_chain
-from chromadb.config import Settings
 import spacy
+import os
 
-# Carrega modelo spaCy
+# Carrega spaCy
 nlp = spacy.load("pt_core_news_sm")
 
 def extrair_keywords(texto):
@@ -28,7 +28,6 @@ def extrair_keywords(texto):
 def reescrever_pergunta(pergunta, usar_llm=True):
     if not usar_llm:
         return pergunta
-
     try:
         llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo")
         prompt = f"""
@@ -41,23 +40,17 @@ Reescreva a pergunta abaixo de forma mais técnica, clara e compatível com os t
         print(f"[!] Falha ao usar LLM para reescrever pergunta: {e}")
         return pergunta
 
-def load_rag_engine(chroma_path: str):
+def load_rag_engine(faiss_path: str):
     embeddings = OpenAIEmbeddings()
 
-    client_settings = Settings(
-        anonymized_telemetry=False,
-        allow_reset=False,
-        persist_directory=chroma_path
-    )
-
-    vectorstore = Chroma(
-        embedding_function=embeddings,
-        persist_directory=chroma_path,
-        client_settings=client_settings
+    # Carrega a base FAISS salva localmente
+    vectorstore = FAISS.load_local(
+        folder_path=faiss_path,
+        embeddings=embeddings,
+        allow_dangerous_deserialization=True  # necessário no Streamlit Cloud
     )
 
     retriever = vectorstore.as_retriever(search_kwargs={"k": 10})
-
     llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo")
 
     prompt_template = PromptTemplate(
