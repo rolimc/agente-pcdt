@@ -15,24 +15,17 @@ from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from langchain.chains.combine_documents import create_stuff_documents_chain
+from chromadb.config import Settings
+import spacy
+
+# Carrega modelo spaCy
+nlp = spacy.load("pt_core_news_sm")
 
 def extrair_keywords(texto):
-    """
-    Extrai palavras-chave com spaCy (opcional).
-    """
-    try:
-        import spacy
-        nlp = spacy.load("pt_core_news_sm")
-        doc = nlp(texto)
-        return list(set([ent.text for ent in doc.ents if len(ent.text) > 3]))
-    except Exception as e:
-        print(f"[!] spaCy não disponível ou erro ao carregar modelo: {e}")
-        return []
+    doc = nlp(texto)
+    return list(set([ent.text for ent in doc.ents if len(ent.text) > 3]))
 
 def reescrever_pergunta(pergunta, usar_llm=True):
-    """
-    Reescreve a pergunta para torná-la mais técnica e clara com ajuda do LLM.
-    """
     if not usar_llm:
         return pergunta
 
@@ -43,22 +36,27 @@ Reescreva a pergunta abaixo de forma mais técnica, clara e compatível com os t
 
 \"{pergunta}\"
 """
-        resposta = llm.invoke(prompt)
-        return resposta.content.strip()  # ✅ Corrigido aqui
+        return llm.invoke(prompt).content.strip()
     except Exception as e:
         print(f"[!] Falha ao usar LLM para reescrever pergunta: {e}")
         return pergunta
 
 def load_rag_engine(chroma_path: str):
-    """
-    Carrega a chain RAG com embeddings e base vetorial persistida.
-    """
     embeddings = OpenAIEmbeddings()
-    vectorstore = Chroma(
-        persist_directory=chroma_path,
-        embedding_function=embeddings
+
+    client_settings = Settings(
+        anonymized_telemetry=False,
+        allow_reset=False,
+        persist_directory=chroma_path
     )
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 40})
+
+    vectorstore = Chroma(
+        embedding_function=embeddings,
+        persist_directory=chroma_path,
+        client_settings=client_settings
+    )
+
+    retriever = vectorstore.as_retriever(search_kwargs={"k": 10})
 
     llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo")
 
