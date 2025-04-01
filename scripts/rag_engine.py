@@ -49,7 +49,6 @@ Reescreva a pergunta abaixo de forma mais técnica, clara e compatível com os t
 def load_rag_engine(faiss_path: str):
     embeddings = OpenAIEmbeddings()
 
-    # Carrega a base vetorial persistida
     vectorstore = FAISS.load_local(
         folder_path=faiss_path,
         embeddings=embeddings,

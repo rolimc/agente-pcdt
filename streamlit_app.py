@@ -7,40 +7,43 @@ Original file is located at
     https://colab.research.google.com/drive/1sIy73cSMTk6HJE9sI8bDTTKYlBkc1PKh
 """
 import streamlit as st
-from scripts.rag_engine import load_rag_engine, reescrever_pergunta
-import spacy
 import subprocess
+import spacy
 
-# Garante que o modelo spaCy esteja disponível (necessário no Streamlit Cloud)
-try:
-    nlp = spacy.load("pt_core_news_sm")
-except OSError:
-    subprocess.run(["python", "-m", "spacy", "download", "pt_core_news_sm"])
-    nlp = spacy.load("pt_core_news_sm")
+from scripts.rag_engine import load_rag_engine, reescrever_pergunta
 
-# Cache para carregar apenas uma vez
+# Garante que o modelo spaCy esteja disponível no Streamlit Cloud
+@st.cache_resource
+def carregar_spacy_nlp():
+    try:
+        return spacy.load("pt_core_news_sm")
+    except OSError:
+        subprocess.run(["python", "-m", "spacy", "download", "pt_core_news_sm"])
+        return spacy.load("pt_core_news_sm")
+
+# Carrega o motor RAG uma única vez
 @st.cache_resource
 def iniciar_engine():
     return load_rag_engine("data/chroma_pcdt_openai")
 
-# Configura layout
+# Layout da página
 st.set_page_config(page_title="Agente PCDT HIV", layout="centered")
 st.title("🤖 Agente PCDT HIV")
-st.markdown("Faça perguntas com base no Protocolo Clínico de HIV 2024.")
+st.markdown("Consulte respostas baseadas no Protocolo Clínico de HIV 2024.")
 
-# Campo de pergunta
+# Campo de entrada
 pergunta = st.text_input("📌 Sua pergunta:", placeholder="Ex: Quando iniciar TARV em paciente com meningite tuberculosa?")
 
-# Se usuário enviar pergunta
+# Ação ao enviar pergunta
 if pergunta:
-    with st.spinner("🔍 Buscando resposta no PCDT..."):
+    with st.spinner("🔍 Consultando base vetorial do PCDT..."):
         chain, retriever, _ = iniciar_engine()
 
         pergunta_reescrita = reescrever_pergunta(pergunta)
         docs = retriever.invoke(pergunta_reescrita)
 
         if not docs:
-            st.warning("⚠️ Nenhum conteúdo relevante foi encontrado no PCDT.")
+            st.warning("⚠️ Nenhum conteúdo relevante foi encontrado.")
         else:
             resposta = chain.invoke({
                 "context": docs,
@@ -50,6 +53,6 @@ if pergunta:
             st.success("✅ Resposta baseada no PCDT:")
             st.markdown(resposta)
 
-            with st.expander("📄 Ver chunks utilizados"):
+            with st.expander("📄 Ver trechos utilizados"):
                 for i, doc in enumerate(docs):
-                    st.markdown(f"**Chunk {i+1}:**\n{doc.page_content[:800]}")
+                    st.markdown(f"**Chunk {i+1}:**\n{doc.page_content[:700]}...")
